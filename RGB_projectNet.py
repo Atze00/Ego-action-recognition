@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 from ModelsRGB import *
-from spatial_transforms import (Compose, ToTensor, CenterCrop, Scale, Normalize, MultiScaleCornerCrop,ColorJitter,
+from spatial_transforms import (Compose, ToTensor, CenterCrop, Scale, Normalize, MultiScaleCornerCrop,
                                 RandomHorizontalFlip)
 from torchvision.transforms import Resize 
 from torchvision.transforms import ToTensor as TT
@@ -26,13 +26,12 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
         print('Dataset not found')
         sys.exit()
     
-    
     if model=='ConvLSTMAttention':
       model=ConvLSTMAttention(num_classes=num_classes, mem_size=memSize,supervision=supervision)
     elif model=='ConvLSTM':
       model=ConvLSTM(num_classes=num_classes, mem_size=memSize,supervision=supervision)
-    elif model=='SupervisedLSTM':
-      model=SupervisedLSTM(num_classes=num_classes, mem_size=memSize,supervision=supervision)
+    elif model=='SupervisedLSTMMod':
+      model=SupervisedLSTMMod(num_classes=num_classes, mem_size=memSize,supervision=supervision)
     else:
       print('Model not found')
       sys.exit()
@@ -54,7 +53,7 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
 
     # Data loader
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    spatial_transform = Compose([Scale(256), RandomHorizontalFlip(), MultiScaleCornerCrop([1, 0.875, 0.75, 0.65625], 224),ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0),
+    spatial_transform = Compose([Scale(256), RandomHorizontalFlip(), MultiScaleCornerCrop([1, 0.875, 0.75, 0.65625], 224),
                                  ToTensor(), normalize])
     spatial_transform_map = Cp([Scale(256), RandomHorizontalFlip(), MultiScaleCornerCrop([1, 0.875, 0.75, 0.65625], 224), Resize((7,7)),
                                  TT()])
@@ -82,7 +81,7 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
       for params in model.resNet.parameters():
           params.requires_grad = True
           train_params += [params]
-    if stage == 1:
+    elif stage == 1:
       supervision=False
       model.eval()
       for params in model.parameters():
@@ -189,7 +188,7 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
             labelVariable = Variable(targets.cuda())
             trainSamples += inputs.size(0)
             output_label, _,output_super = model(inputVariable)
-            if supervision:
+            if supervision==True:
               loss_=loss_sup(output_super,maps)
               loss_.backward(retain_graph=True)
               epoch_loss_ += loss_.data.item()
@@ -203,8 +202,8 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
         avg_loss = epoch_loss/iterPerEpoch
         trainAccuracy = (numCorrTrain / float(trainSamples)) * 100
         
-        avg_loss_ = epoch_loss_/iterPerEpoch
-        print('Train: Epoch = {} | Loss = {} | Accuracy = {} | super_loss {}'.format(epoch+1, avg_loss, trainAccuracy,avg_loss_))
+        avg_loss_ = epoch_loss_/float(iterPerEpoch)
+        print('Train: Epoch = {} | Loss = {} | Accuracy = {} | supervision_loss {}'.format(epoch+1, avg_loss, trainAccuracy,avg_loss_))
         train_log_loss.write('Train Loss after {} epochs = {}\n'.format(epoch + 1, avg_loss))
         train_log_acc.write('Train Accuracy after {} epochs = {}%\n'.format(epoch + 1, trainAccuracy))
         writer.add_scalar('train/epoch_loss', avg_loss, epoch+1)
@@ -254,9 +253,9 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
 def __main__():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='gtea61', help='Dataset')
-    parser.add_argument('--stage', type=int, default=1, help='Training stage')
-    parser.add_argument('--model', type=str, default='ConvLSTMAttention', help='model implementation')
-    parser.add_argument('--supervision', type=str, default='False', help='Self-supervision task or not')
+    parser.add_argument('--stage', type=int, default=None, help='Training stage')
+    parser.add_argument('--model', type=str, default=None, help='model implementation')
+    parser.add_argument('--supervision', type=str, default=None, help='Self-supervision task or not')
     parser.add_argument('--trainDatasetDir', type=str, default='./dataset/gtea_warped_flow_61/split2/train',
                         help='Train set directory')
     parser.add_argument('--valDatasetDir', type=str, default=None,
@@ -274,11 +273,17 @@ def __main__():
     parser.add_argument('--memSize', type=int, default=512, help='ConvLSTM hidden state size')
 
     args = parser.parse_args()
-
+    
+    if args.supervision=="True":
+     supervision=True
+    elif args.supervision=="False":
+     supervision=False
+    else: 
+     print('invalid value for supervision')
+     sys.exit()
     dataset = args.dataset
     stage = args.stage
     model= args.model
-    supervision= args.supervision
     trainDatasetDir = args.trainDatasetDir
     valDatasetDir = args.valDatasetDir
     outDir = args.outDir

@@ -44,7 +44,7 @@ class ToTensor(object):
     def __init__(self, norm_value=255):
         self.norm_value = norm_value
 
-    def __call__(self, pic, inv, flow):
+    def __call__(self, pic, inv=False, flow=False):
         """
         Args:
             pic (PIL.Image or numpy.ndarray): Image to be converted to tensor.
@@ -104,7 +104,7 @@ class Normalize(object):
         self.mean = mean
         self.std = std
 
-    def __call__(self, tensor, inv, flow):
+    def __call__(self, tensor,inv=False, flow=False):
         """
         Args:
             tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
@@ -143,7 +143,7 @@ class Scale(object):
         self.size = size
         self.interpolation = interpolation
 
-    def __call__(self, img, inv, flow):
+    def __call__(self, img,inv=False, flow=False):
         """
         Args:
             img (PIL.Image): Image to be scaled.
@@ -183,7 +183,7 @@ class CenterCrop(object):
         else:
             self.size = size
 
-    def __call__(self, img, inv, flow):
+    def __call__(self, img, inv=False, flow=False):
         """
         Args:
             img (PIL.Image): Image to be cropped.
@@ -203,7 +203,7 @@ class CenterCrop(object):
 class RandomHorizontalFlip(object):
     """Horizontally flip the given PIL.Image randomly with a probability of 0.5."""
 
-    def __call__(self, img, inv, flow):
+    def __call__(self, img, inv=False, flow=False):
         """
         Args:
             img (PIL.Image): Image to be flipped.
@@ -238,7 +238,7 @@ class MultiScaleCornerCrop(object):
 
         self.crop_positions = ['c', 'tl', 'tr', 'bl', 'br']
 
-    def __call__(self, img, inv, flow):
+    def __call__(self, img,inv=False, flow=False):
         # print(img.size[0])
         min_length = min(img.size[0], img.size[1])
         crop_size = int(min_length * self.scale)
@@ -306,7 +306,7 @@ class FiveCrops(object):
         self.normalize = Normalize(self.mean, self.std)
         self.tenCrops = tenCrops
 
-    def __call__(self, img, inv, flow):
+    def __call__(self, img, inv=False, flow=False):
         # print(img.size[0])
         crop_size = self.size
 
@@ -383,7 +383,7 @@ class TenCrops(object):
         self.std = std
         self.fiveCrops = FiveCrops(self.size, self.mean, self.std, self.interpolation, True)
 
-    def __call__(self, img, inv, flow):
+    def __call__(self, img, inv=False, flow=False):
         # print(img.size[0])
         return self.fiveCrops(img, inv, flow)
 
@@ -401,7 +401,7 @@ class FlippedImagesTest(object):
         self.to_Tensor = ToTensor()
         self.normalize = Normalize(self.mean, self.std)
 
-    def __call__(self, img, inv, flow):
+    def __call__(self, img, inv=False, flow=False):
         # print(img.size[0])
         img_flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
         if inv is True:

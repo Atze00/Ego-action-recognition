@@ -34,7 +34,7 @@ class ConvLSTM(nn.Module):
         self.classifier = nn.Sequential(self.dropout,self.fc)
         self.sup_head= SupervisionHead(512,100,7,7)
 
-    def forward(self, inputVariable,supervision):
+    def forward(self, inputVariable):
         state = (Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()),
                  Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()))
         superv_x=[]
@@ -93,7 +93,7 @@ class ConvLSTMAttention(nn.Module):
         
 
 
-class SupervisedLSTM(nn.Module):
+class SupervisedLSTMMod(nn.Module):
     def __init__(self, num_classes=61, mem_size=512):
         super(selfSuperAttentionModel, self).__init__()
         self.num_classes = num_classes
@@ -107,7 +107,7 @@ class SupervisedLSTM(nn.Module):
         self.classifier = nn.Sequential(self.dropout,self.fc)
         self.sup_head= SupervisionHead(512,100,7,7)
 
-    def forward(self, inputVariable,supervision=False):
+    def forward(self, inputVariable):
         state = (Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()),
                  Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()))
         superv_x=[]
