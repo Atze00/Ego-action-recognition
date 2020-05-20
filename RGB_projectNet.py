@@ -145,8 +145,12 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
     model.cuda()
     loss_sup=nn.CrossEntropyLoss()
     loss_fn = nn.CrossEntropyLoss()
-    optimizer_fn = torch.optim.Adam([{"params":train_params,"lr":lr1*2e-1},{"params":train_params3,"lr":lr1*4e-1},
-    {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
+    if stage==0:
+      optimizer_fn = torch.optim.Adam([{"params":train_params,"lr":lr1*2e-1},{"params":train_params3,"lr":lr1*4e-1},
+      {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
+    else:
+      optimizer_fn = torch.optim.Adam([{"params":train_params,"lr":lr1},{"params":train_params3,"lr":lr1},
+      {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
     optim_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_fn, milestones=decay_step,
                                                            gamma=decay_factor)
 
