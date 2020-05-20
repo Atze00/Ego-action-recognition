@@ -137,7 +137,7 @@ def main_run(dataset, stage, train_data_dir, val_data_dir, stage1_dict, out_dir,
     min_accuracy = 0
 
     for epoch in range(numEpochs):
-        optim_scheduler.step()
+        
         epoch_loss = 0
         numCorrTrain = 0
         trainSamples = 0
@@ -166,11 +166,13 @@ def main_run(dataset, stage, train_data_dir, val_data_dir, stage1_dict, out_dir,
             optimizer_fn.step()
             _, predicted = torch.max(output_label.data, 1)
             numCorrTrain += (predicted == targets.cuda()).sum()
-            epoch_loss += loss.data[0]
+            epoch_loss += loss.data.item()
         avg_loss = epoch_loss/iterPerEpoch
-        trainAccuracy = (numCorrTrain / trainSamples) * 100
-
+        trainAccuracy = (numCorrTrain / float(trainSamples)) * 100
+        optim_scheduler.step()
         print('Train: Epoch = {} | Loss = {} | Accuracy = {}'.format(epoch+1, avg_loss, trainAccuracy))
+        train_log_loss.write('Train Loss after {} epochs = {}\n'.format(epoch + 1, avg_loss))
+        train_log_acc.write('Train Accuracy after {} epochs = {}%\n'.format(epoch + 1, trainAccuracy))
         writer.add_scalar('train/epoch_loss', avg_loss, epoch+1)
         writer.add_scalar('train/accuracy', trainAccuracy, epoch+1)
         if val_data_dir is not None:
@@ -183,16 +185,17 @@ def main_run(dataset, stage, train_data_dir, val_data_dir, stage1_dict, out_dir,
                 for j, (inputs, targets) in enumerate(val_loader):
                     val_iter += 1
                     val_samples += inputs.size(0)
-                    inputVariable = Variable(inputs.permute(1, 0, 2, 3, 4).cuda(), volatile=True)
-                    labelVariable = Variable(targets.cuda(async=True), volatile=True)
-                    output_label, _ = model(inputVariable)
-                    val_loss = loss_fn(output_label, labelVariable)
-                    val_loss_epoch += val_loss.data[0]
-                    _, predicted = torch.max(output_label.data, 1)
-                    numCorr += (predicted == targets.cuda()).sum()
-                val_accuracy = (numCorr / val_samples) * 100
+                    with torch.no_grad():
+                      inputVariable = Variable(inputs.permute(1, 0, 2, 3, 4).cuda())
+                      labelVariable = Variable(targets.cuda(non_blocking=True))
+                      output_label, _ = model(inputVariable)
+                      val_loss = loss_fn(output_label, labelVariable)
+                      val_loss_epoch += val_loss.data.item()
+                      _, predicted = torch.max(output_label.data, 1)
+                      numCorr += (predicted == targets.cuda()).sum()
+                val_accuracy = (numCorr / float(val_samples)) * 100
                 avg_val_loss = val_loss_epoch / val_iter
-                print('Val: Epoch = {} | Loss {} | Accuracy = {}'.format(epoch + 1, avg_val_loss, val_accuracy))
+                print('val: Epoch = {} | Loss = {} | Accuracy = {} '.format(epoch+1, avg_val_loss, val_accuracy))
                 writer.add_scalar('val/epoch_loss', avg_val_loss, epoch + 1)
                 writer.add_scalar('val/accuracy', val_accuracy, epoch + 1)
                 val_log_loss.write('Val Loss after {} epochs = {}\n'.format(epoch + 1, avg_val_loss))
