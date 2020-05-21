@@ -27,11 +27,11 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
         sys.exit()
     
     if model=='ConvLSTMAttention':
-      model=ConvLSTMAttention(num_classes=num_classes, mem_size=memSize,supervision=supervision)
+      model=ConvLSTMAttention(num_classes=num_classes, mem_size=memSize,supervision=supervision,lossSupervision=lossSupervision)
     elif model=='ConvLSTM':
-      model=ConvLSTM(num_classes=num_classes, mem_size=memSize,supervision=supervision)
+      model=ConvLSTM(num_classes=num_classes, mem_size=memSize,supervision=supervision,lossSupervision=lossSupervision)
     elif model=='SupervisedLSTMMod':
-      model=SupervisedLSTMMod(num_classes=num_classes, mem_size=memSize,supervision=supervision)
+      model=SupervisedLSTMMod(num_classes=num_classes, mem_size=memSize,supervision=supervision,lossSupervision=lossSupervision)
     else:
       print('Model not found')
       sys.exit()
