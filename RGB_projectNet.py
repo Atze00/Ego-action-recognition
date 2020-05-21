@@ -81,6 +81,8 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
       for params in model.resNet.parameters():
           params.requires_grad = True
           train_params += [params]
+      if stage1_dict is not None:
+        model.load_state_dict(torch.load(stage1_dict))
     elif stage == 1:
       supervision=False
       model.eval()
@@ -265,7 +267,7 @@ def __main__():
     parser.add_argument('--valDatasetDir', type=str, default=None,
                         help='Val set directory')
     parser.add_argument('--outDir', type=str, default='experiments', help='Directory to save results')
-    parser.add_argument('--stage1Dict', type=str, default='./experiments/gtea61/rgb/stage1/model_rgb_state_dict.pth',
+    parser.add_argument('--stage1Dict', type=str, default=None,
                         help='Stage 1 model path')
     parser.add_argument('--seqLen', type=int, default=25, help='Length of sequence')
     parser.add_argument('--trainBatchSize', type=int, default=32, help='Training batch size')
@@ -285,13 +287,13 @@ def __main__():
     else: 
      print('invalid value for supervision')
      sys.exit()
+    stage1Dict = args.stage1Dict
     dataset = args.dataset
     stage = args.stage
     model= args.model
     trainDatasetDir = args.trainDatasetDir
     valDatasetDir = args.valDatasetDir
     outDir = args.outDir
-    stage1Dict = args.stage1Dict
     seqLen = args.seqLen
     trainBatchSize = args.trainBatchSize
     valBatchSize = args.valBatchSize
