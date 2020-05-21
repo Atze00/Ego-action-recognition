@@ -189,7 +189,7 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
   
             maps = maps.permute(1,0,2,3,4).squeeze(2).cuda()
 
-            maps=maps.reshape(maps.shape[0]*maps.shape[1],1,maps.shape[2],maps.shape[3])
+            maps=maps.reshape(maps.shape[0]*maps.shape[1],maps.shape[2],maps.shape[3])
             inputVariable = Variable(inputs.permute(1, 0, 2, 3, 4).cuda())
             labelVariable = Variable(targets.cuda())
             trainSamples += inputs.size(0)
