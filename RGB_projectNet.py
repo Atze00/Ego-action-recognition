@@ -12,7 +12,7 @@ import sys
 
 
 def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, stage1_dict, out_dir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decay_factor, decay_step, memSize):
+             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decay_factor, decay_step,lossSupervision, memSize):
     
     if dataset == 'gtea61':
         num_classes = 61
@@ -145,7 +145,10 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
     model.lstm_cell.train()
     model.classifier.train()
     model.cuda()
-    loss_sup=nn.CrossEntropyLoss()
+    if lossSupervision=="classification":
+      loss_sup=nn.CrossEntropyLoss()
+    elif lossSupervision=="regression":
+      loss_sup=nn.L1Loss()
     loss_fn = nn.CrossEntropyLoss()
     optimizer_fn = torch.optim.Adam([{"params":train_params,"lr": lr_resnet},{"params":train_params3,"lr":lr_suphead},
       {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
@@ -180,8 +183,9 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
             train_iter += 1
             iterPerEpoch += 1
             optimizer_fn.zero_grad()
-            maps=torch.ceil(maps)
-            maps=maps.type(torch.LongTensor)
+            if lossSupervision=="classification":
+              maps=torch.ceil(maps)
+              maps=maps.type(torch.LongTensor)
   
             maps = maps.permute(1,0,2,3,4).squeeze(2).cuda()
 
@@ -274,6 +278,7 @@ def __main__():
     parser.add_argument('--lr_resnet', type=float, default=None, help='Learning rate')
     parser.add_argument('--stepSize', type=float, default=[25, 75, 150], nargs="+", help='Learning rate decay step')
     parser.add_argument('--decayRate', type=float, default=0.1, help='Learning rate decay rate')
+    parser.add_argument('--lossSupervision', type=str, default="classification", help='type of loss, regression or classification')
     parser.add_argument('--memSize', type=int, default=512, help='ConvLSTM hidden state size')
 
     args = parser.parse_args()
@@ -310,8 +315,8 @@ def __main__():
     stepSize = args.stepSize
     decayRate = args.decayRate
     memSize = args.memSize
-
+    lossSupervision = args.lossSupervision
     main_run(dataset, stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decayRate, stepSize, memSize)
+             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decayRate, stepSize,lossSupervision, memSize)
 
 __main__()
