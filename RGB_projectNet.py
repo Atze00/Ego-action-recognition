@@ -12,7 +12,7 @@ import sys
 
 
 def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, stage1_dict, out_dir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1, decay_factor, decay_step, memSize):
+             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decay_factor, decay_step, memSize):
     
     if dataset == 'gtea61':
         num_classes = 61
@@ -147,11 +147,7 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
     model.cuda()
     loss_sup=nn.CrossEntropyLoss()
     loss_fn = nn.CrossEntropyLoss()
-    if stage==0:
-      optimizer_fn = torch.optim.Adam([{"params":train_params,"lr":lr1*2e-1},{"params":train_params3,"lr":lr1*4e-1},
-      {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
-    else:
-      optimizer_fn = torch.optim.Adam([{"params":train_params,"lr":lr1},{"params":train_params3,"lr":lr1},
+    optimizer_fn = torch.optim.Adam([{"params":train_params,"lr": lr_resnet},{"params":train_params3,"lr":lr_suphead},
       {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
     optim_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_fn, milestones=decay_step,
                                                            gamma=decay_factor)
@@ -274,11 +270,23 @@ def __main__():
     parser.add_argument('--valBatchSize', type=int, default=64, help='Validation batch size')
     parser.add_argument('--numEpochs', type=int, default=300, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
+    parser.add_argument('--lr_suphead', type=float, default=None, help='Learning rate')
+    parser.add_argument('--lr_resnet', type=float, default=None, help='Learning rate')
     parser.add_argument('--stepSize', type=float, default=[25, 75, 150], nargs="+", help='Learning rate decay step')
     parser.add_argument('--decayRate', type=float, default=0.1, help='Learning rate decay rate')
     parser.add_argument('--memSize', type=int, default=512, help='ConvLSTM hidden state size')
 
     args = parser.parse_args()
+    if args.lr_suphead==None:
+     lr_suphead=lr
+    else:
+     lr_suphead=args.lr_suphead
+    
+    if args.lr_resnet==None:
+     lr_resnet=lr
+    else:
+     lr_resnet=args.lr_resnet
+    
     
     if args.supervision=="True":
      supervision=True
@@ -304,6 +312,6 @@ def __main__():
     memSize = args.memSize
 
     main_run(dataset, stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1, decayRate, stepSize, memSize)
+             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decayRate, stepSize, memSize)
 
 __main__()
