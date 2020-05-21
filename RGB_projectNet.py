@@ -186,7 +186,9 @@ def main_run(dataset, stage, model, supervision, train_data_dir, val_data_dir, s
             if lossSupervision=="classification":
               maps=torch.ceil(maps)
               maps=maps.type(torch.LongTensor)
-  
+              maps=maps.reshape(maps.shape[0]*maps.shape[1],maps.shape[2],maps.shape[3])
+            else:
+              maps=maps.reshape(maps.shape[0]*maps.shape[1],1,maps.shape[2],maps.shape[3])
             maps = maps.permute(1,0,2,3,4).squeeze(2).cuda()
 
             maps=maps.reshape(maps.shape[0]*maps.shape[1],maps.shape[2],maps.shape[3])
