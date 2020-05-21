@@ -32,7 +32,7 @@ class ConvLSTM(nn.Module):
         self.dropout = nn.Dropout(0.7)
         self.fc = nn.Linear(mem_size, self.num_classes)
         self.classifier = nn.Sequential(self.dropout,self.fc)
-        if lossSupervision=="Regression":
+        if lossSupervision=="regression":
             self.sup_head= SupervisionHead(512,100,7,7,1)
         if lossSupervision=="classification":
             self.sup_head= SupervisionHead(512,100,7,7,2)
@@ -67,7 +67,7 @@ class ConvLSTMAttention(nn.Module):
         self.dropout = nn.Dropout(0.7)
         self.fc = nn.Linear(mem_size, self.num_classes)
         self.classifier = nn.Sequential(self.dropout,self.fc)
-        if lossSupervision=="Regression":
+        if lossSupervision=="regression":
             self.sup_head= SupervisionHead(512,100,7,7,1)
         if lossSupervision=="classification":
             self.sup_head= SupervisionHead(512,100,7,7,2)
@@ -111,7 +111,7 @@ class SupervisedLSTMMod(nn.Module):
         self.dropout = nn.Dropout(0.7)
         self.fc = nn.Linear(mem_size, self.num_classes)
         self.classifier = nn.Sequential(self.dropout,self.fc)
-        if lossSupervision=="Regression":
+        if lossSupervision=="regression":
             self.sup_head= SupervisionHead(512,100,7,7,1)
         if lossSupervision=="classification":
             self.sup_head= SupervisionHead(512,100,7,7,2)
