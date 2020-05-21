@@ -48,7 +48,7 @@ class ConvLSTM(nn.Module):
                 superv_x.append(self.sup_head(feature_convNBN))
         if self.supervision==True:
             superv_x=torch.stack(superv_x)
-            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],superv_x.shape[2],7,7)
+            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],-1,7,7)
 
         feats1 = self.avgpool(state[1]).view(state[1].size(0), -1)
         feats = self.classifier(feats1)
@@ -91,7 +91,7 @@ class ConvLSTMAttention(nn.Module):
                 superv_x.append(self.sup_head(feature_convNBN))
         if self.supervision==True:
             superv_x=torch.stack(superv_x)
-            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],superv_x.shape[2],7,7)
+            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],-1,7,7)
 
         feats1 = self.avgpool(state[1]).view(state[1].size(0), -1)
         feats = self.classifier(feats1)
@@ -127,7 +127,7 @@ class SupervisedLSTMMod(nn.Module):
                 superv_x.append(self.sup_head(state[0]))
         if supervision==True:
             superv_x=torch.stack(superv_x)
-            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],superv_x.shape[2],7,7)
+            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],-1,7,7)
         feats1 = self.avgpool(state[1]).view(state[1].size(0), -1)
         feats = self.classifier(feats1)
         return feats, feats1, superv_x
