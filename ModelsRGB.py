@@ -8,11 +8,11 @@ from torch.autograd import Variable
 from MyConvLSTMCell import *
 
 class SupervisionHead(nn.Module):
-    def __init__(self,in_channels,out_channels,h,w):
+    def __init__(self,in_channels,out_channels,h,w,m):
         super(SupervisionHead, self).__init__()
         self.conv= nn.Sequential(nn.ReLU(),
         		nn.Conv2d(in_channels,out_channels,kernel_size=1,padding=0))
-        self.fc= nn.Sequential(nn.Linear(h*w*out_channels,2*h*w))
+        self.fc= nn.Sequential(nn.Linear(h*w*out_channels,m*h*w))
     def forward(self,x):
         x=self.conv(x)
         x=x.view(x.shape[0],-1)
@@ -20,7 +20,7 @@ class SupervisionHead(nn.Module):
         return x
 
 class ConvLSTM(nn.Module):
-    def __init__(self, supervision,num_classes=61, mem_size=512):
+    def __init__(self, supervision,num_classes=61, mem_size=512, lossSupervision="classification"):
         super(ConvLSTM, self).__init__()
         self.num_classes = num_classes
         self.supervision = supervision
@@ -32,7 +32,10 @@ class ConvLSTM(nn.Module):
         self.dropout = nn.Dropout(0.7)
         self.fc = nn.Linear(mem_size, self.num_classes)
         self.classifier = nn.Sequential(self.dropout,self.fc)
-        self.sup_head= SupervisionHead(512,100,7,7)
+        if lossSupervision=="Regression":
+            self.sup_head= SupervisionHead(512,100,7,7,1)
+        if lossSupervision=="classification":
+            self.sup_head= SupervisionHead(512,100,7,7,2)
 
     def forward(self, inputVariable):
         state = (Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()),
@@ -45,14 +48,14 @@ class ConvLSTM(nn.Module):
                 superv_x.append(self.sup_head(feature_convNBN))
         if self.supervision==True:
             superv_x=torch.stack(superv_x)
-            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],2,7,7)
+            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],superv_x.shape[2],7,7)
 
         feats1 = self.avgpool(state[1]).view(state[1].size(0), -1)
         feats = self.classifier(feats1)
         return feats, feats1, superv_x
 
 class ConvLSTMAttention(nn.Module):
-    def __init__(self, supervision,num_classes=61, mem_size=512):
+    def __init__(self, supervision,num_classes=61, mem_size=512,lossSupervision="classification"):
         super(ConvLSTMAttention, self).__init__()
         self.supervision=supervision
         self.num_classes = num_classes
@@ -64,7 +67,10 @@ class ConvLSTMAttention(nn.Module):
         self.dropout = nn.Dropout(0.7)
         self.fc = nn.Linear(mem_size, self.num_classes)
         self.classifier = nn.Sequential(self.dropout,self.fc)
-        self.sup_head= SupervisionHead(512,100,7,7)
+        if lossSupervision=="Regression":
+            self.sup_head= SupervisionHead(512,100,7,7,1)
+        if lossSupervision=="classification":
+            self.sup_head= SupervisionHead(512,100,7,7,2)
 
     def forward(self, inputVariable):
         state = (Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()),
@@ -85,7 +91,7 @@ class ConvLSTMAttention(nn.Module):
                 superv_x.append(self.sup_head(feature_convNBN))
         if self.supervision==True:
             superv_x=torch.stack(superv_x)
-            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],2,7,7)
+            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],superv_x.shape[2],7,7)
 
         feats1 = self.avgpool(state[1]).view(state[1].size(0), -1)
         feats = self.classifier(feats1)
@@ -94,7 +100,7 @@ class ConvLSTMAttention(nn.Module):
 
 
 class SupervisedLSTMMod(nn.Module):
-    def __init__(self, num_classes=61, mem_size=512):
+    def __init__(self, num_classes=61, mem_size=512,lossSupervision="classification"):
         super(selfSuperAttentionModel, self).__init__()
         self.num_classes = num_classes
         self.resNet = resnetMod.resnet34(True, True)
@@ -105,7 +111,10 @@ class SupervisedLSTMMod(nn.Module):
         self.dropout = nn.Dropout(0.7)
         self.fc = nn.Linear(mem_size, self.num_classes)
         self.classifier = nn.Sequential(self.dropout,self.fc)
-        self.sup_head= SupervisionHead(512,100,7,7)
+        if lossSupervision=="Regression":
+            self.sup_head= SupervisionHead(512,100,7,7,1)
+        if lossSupervision=="classification":
+            self.sup_head= SupervisionHead(512,100,7,7,2)
 
     def forward(self, inputVariable):
         state = (Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()),
@@ -115,10 +124,10 @@ class SupervisedLSTMMod(nn.Module):
             logit, feature_conv, feature_convNBN = self.resNet(inputVariable[t])
             state = self.lstm_cell(feature_conv, state)
             if supervision==True:
-                superv_x.append(self.sup_head(state[0]))#len_seq,batch,img
+                superv_x.append(self.sup_head(state[0]))
         if supervision==True:
             superv_x=torch.stack(superv_x)
-            superv_x= superv_x.reshape(superv_x.shape[0],superv_x.shape[1],7,7)
+            superv_x= superv_x.reshape(superv_x.shape[0]*superv_x.shape[1],superv_x.shape[2],7,7)
         feats1 = self.avgpool(state[1]).view(state[1].size(0), -1)
         feats = self.classifier(feats1)
         return feats, feats1, superv_x
