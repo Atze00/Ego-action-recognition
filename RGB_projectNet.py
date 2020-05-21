@@ -278,12 +278,12 @@ def __main__():
 
     args = parser.parse_args()
     if args.lr_suphead==None:
-     lr_suphead=lr
+     lr_suphead=args.lr
     else:
      lr_suphead=args.lr_suphead
     
     if args.lr_resnet==None:
-     lr_resnet=lr
+     lr_resnet=args.lr
     else:
      lr_resnet=args.lr_resnet
     
