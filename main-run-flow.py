@@ -103,8 +103,8 @@ def main_run(dataset, trainDir, valDir, outDir, stackSize, trainBatchSize, valBa
             _, predicted = torch.max(output_label.data, 1)
             numCorrTrain += (predicted == targets.cuda()).sum()
             epoch_loss += loss.item()
-        avg_loss = epoch_loss/iterPerEpoch
-        trainAccuracy = (numCorrTrain / trainSamples) * 100
+        avg_loss = epoch_loss/float(iterPerEpoch)
+        trainAccuracy = (numCorrTrain / float(trainSamples) )* 100
         print('Train: Epoch = {} | Loss = {} | Accuracy = {}'.format(epoch + 1, avg_loss, trainAccuracy))
         writer.add_scalar('train/epoch_loss', avg_loss, epoch+1)
         writer.add_scalar('train/accuracy', trainAccuracy, epoch+1)
@@ -127,7 +127,7 @@ def main_run(dataset, trainDir, valDir, outDir, stackSize, trainBatchSize, valBa
                     val_loss_epoch += val_loss.item()
                     _, predicted = torch.max(output_label.data, 1)
                     numCorr += (predicted == targets.cuda()).sum()
-                val_accuracy = (numCorr / val_samples) * 100
+                val_accuracy = (numCorr / float(val_samples)) * 100
                 avg_val_loss = val_loss_epoch / val_iter
                 print('Validation: Epoch = {} | Loss = {} | Accuracy = {}'.format(epoch + 1, avg_val_loss, val_accuracy))
                 writer.add_scalar('val/epoch_loss', avg_val_loss, epoch + 1)
