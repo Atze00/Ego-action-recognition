@@ -1,7 +1,6 @@
 import numpy as np
 from torchvision import transforms
 import cv2
-from objectAttentionModelConvLSTM import *
 from attentionMapModel import attentionMap
 from ModelsRGB import *
 from PIL import Image
@@ -10,7 +9,7 @@ def generateAttentionMap(model_state_dict):
     num_classes = 61 # Classes in the pre-trained model
     mem_size = 512 # Weights of the pre-trained model
 
-    model=ConvLSTMAttention(num_classes=num_classes, mem_size=memSize,supervision=supervision,lossSupervision=lossSupervision)
+    model=ConvLSTMAttention(num_classes=num_classes, mem_size=mem_size,supervision=True)
 
     model.load_state_dict(torch.load(model_state_dict))
     model_backbone = model.resNet
