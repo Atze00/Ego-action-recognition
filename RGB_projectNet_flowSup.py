@@ -6,29 +6,26 @@ from torchvision.transforms import Resize
 from torchvision.transforms import ToTensor as TT
 from torchvision.transforms import Compose as Cp
 from tensorboardX import SummaryWriter
-from makeDatasetRGB_supervision import *
+from makeDatasetRGB_flowsupervision import *
+from torchvision.utils import save_image
 import argparse
 import sys
 
 
 def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_dict, out_dir, seqLen, trainBatchSize,
              valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decay_factor, decay_step,lossSupervision, memSize):
-    
+
 
     num_classes = 61
 
     
-    if model=='ConvLSTMAttention':
-      model=ConvLSTMAttention(num_classes=num_classes, mem_size=memSize,supervision=supervision,lossSupervision=lossSupervision)
-    elif model=='ConvLSTM':
-      model=ConvLSTM(num_classes=num_classes, mem_size=memSize,supervision=supervision,lossSupervision=lossSupervision)
-    elif model=='SupervisedLSTMMod':
-      model=SupervisedLSTMMod(num_classes=num_classes, mem_size=memSize,supervision=supervision,lossSupervision=lossSupervision)
+    if model=='MyNet':
+      model=MyNet(num_classes=num_classes, mem_size=memSize)
     else:
       print('Model not found')
       sys.exit()
     
-    model_folder = os.path.join('./', out_dir, dataset, 'rgb', 'stage'+str(stage))  # Dir for saving models and log files
+    model_folder = os.path.join('./', out_dir, 'rgb', 'stage'+str(stage))  # Dir for saving models and log files
     # Create the dir
     if os.path.exists(model_folder):
         print('Directory {} exists!'.format(model_folder))
@@ -69,59 +66,9 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
     train_params = []
     train_params3 = []
     train_params2 = []
-    if stage == 0:
-      for params in model.resNet.parameters():
-          params.requires_grad = True
-          train_params += [params]
-      if stage1_dict is not None:
-        model.load_state_dict(torch.load(stage1_dict))
-    elif stage == 1:
-      supervision=False
-      model.eval()
-      for params in model.parameters():
-            params.requires_grad = False
-    else:
-        model.load_state_dict(torch.load(stage1_dict))
-        model.train()
-        for params in model.parameters():
-            params.requires_grad = False
-        #
-        for params in model.resNet.layer4[0].conv1.parameters():
-            params.requires_grad = True
-            train_params += [params]
-
-        for params in model.resNet.layer4[0].conv2.parameters():
-            params.requires_grad = True
-            train_params += [params]
-
-        for params in model.resNet.layer4[1].conv1.parameters():
-            params.requires_grad = True
-            train_params += [params]
-
-        for params in model.resNet.layer4[1].conv2.parameters():
-            params.requires_grad = True
-            train_params += [params]
-
-        for params in model.resNet.layer4[2].conv1.parameters():
-            params.requires_grad = True
-            train_params += [params]
-        #
-        for params in model.resNet.layer4[2].conv2.parameters():
-            params.requires_grad = True
-            train_params += [params]
-        #
-        for params in model.resNet.fc.parameters():
-            params.requires_grad = True
-            train_params += [params]
-
-        model.resNet.layer4[0].conv1.train(True)
-        model.resNet.layer4[0].conv2.train(True)
-        model.resNet.layer4[1].conv1.train(True)
-        model.resNet.layer4[1].conv2.train(True)
-        model.resNet.layer4[2].conv1.train(True)
-        model.resNet.layer4[2].conv2.train(True)
-        model.resNet.fc.train(True)
-        model.sup_head.train()
+    for params in model.resNet.parameters():
+      params.requires_grad = True
+      train_params += [params]
         
     for params in model.lstm_cell.parameters():
         params.requires_grad = True
@@ -133,23 +80,24 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
     for params in model.sup_head.parameters():
         params.requires_grad = True
         train_params3 += [params]
-        
+
     model.lstm_cell.train()
     model.classifier.train()
     model.cuda()
     if lossSupervision=="classification":
       loss_sup=nn.CrossEntropyLoss()
     elif lossSupervision=="regression":
-      loss_sup=nn.L1Loss()
+      loss_sup=nn.MSELoss()
     loss_fn = nn.CrossEntropyLoss()
     optimizer_fn = torch.optim.Adam([{"params":train_params,"lr": lr_resnet},{"params":train_params3,"lr":lr_suphead},
-      {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
+       {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
     optim_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_fn, milestones=decay_step,
                                                            gamma=decay_factor)
 
     train_iter = 0
     min_accuracy = 0
-    
+    loss=0
+
     for epoch in range(numEpochs):
         epoch_loss = 0
         numCorrTrain = 0
@@ -160,47 +108,43 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
         model.lstm_cell.train(True)
         model.classifier.train(True)
         writer.add_scalar('lr', optimizer_fn.param_groups[0]['lr'], epoch+1)
-        if stage == 0:
-            model.train()
-        if stage == 2:
-            model.resNet.layer4[0].conv1.train(True)
-            model.resNet.layer4[0].conv2.train(True)
-            model.resNet.layer4[1].conv1.train(True)
-            model.resNet.layer4[1].conv2.train(True)
-            model.resNet.layer4[2].conv1.train(True)
-            model.resNet.layer4[2].conv2.train(True)
-            model.sup_head.train()
-            model.resNet.fc.train(True)
-        for i, (inputs, targets,maps,_) in enumerate(train_loader):
+
+        model.train()
+        for i, (inputs, targets,maps,m,_) in enumerate(train_loader):
             train_iter += 1
             iterPerEpoch += 1
             optimizer_fn.zero_grad()
-            if lossSupervision=="classification":
-              maps=torch.ceil(maps)
-              maps=maps.type(torch.LongTensor)
-              maps = maps.permute(1,0,2,3,4).squeeze(2).cuda()
-              maps=maps.reshape(maps.shape[0]*maps.shape[1],maps.shape[2],maps.shape[3])
-            else:
-              maps = maps.permute(1,0,2,3,4).cuda()
-              maps=maps.reshape(maps.shape[0]*maps.shape[1],maps.shape[2],maps.shape[3],maps.shape[4])
             inputVariable = Variable(inputs.permute(1, 0, 2, 3, 4).cuda())
             labelVariable = Variable(targets.cuda())
+            m=m.permute(1,0,2,3,4).cuda()
+              
             trainSamples += inputs.size(0)
             output_label, _,output_super = model(inputVariable)
             if supervision==True:
-              loss_=loss_sup(output_super,maps)
-              loss_.backward(retain_graph=True)
+
+              loss_=loss_sup(output_super,m.cuda())
               epoch_loss_ += loss_.data.item()
+              loss_=loss_*0.1
+              loss_.backward(retain_graph=True)
+
             loss = loss_fn(output_label, labelVariable)
             loss.backward()
+            epoch_loss += loss.data.item()
             optimizer_fn.step()
             _, predicted = torch.max(output_label.data, 1)
             numCorrTrain += (predicted == targets.cuda()).sum()
-            epoch_loss += loss.data.item()
+            
         optim_scheduler.step()
         avg_loss = epoch_loss/iterPerEpoch
         trainAccuracy = (numCorrTrain / float(trainSamples)) * 100
-        
+        output_super=output_super.cpu()
+        m=m.cpu()
+        if (epoch%2==0) and supervision==True:
+          d=f"./Results/epoch{epoch}"
+          os.makedirs(d)
+          for i in range(m.shape[0]):
+            save_image(m[i,0], d+f'/inp{i}.png')
+            save_image(output_super[i,0].detach(),d+f'/out{i}.png')
         avg_loss_ = epoch_loss_/float(iterPerEpoch)
         print('Train: Epoch = {} | Loss = {} | Accuracy = {} | supervision_loss {}'.format(epoch+1, avg_loss, trainAccuracy,avg_loss_))
         train_log_loss.write('Train Loss after {} epochs = {}\n'.format(epoch + 1, avg_loss))
@@ -214,7 +158,7 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
                 val_iter = 0
                 val_samples = 0
                 numCorr = 0
-                for j, (inputs, targets,_,_) in enumerate(val_loader):
+                for j, (inputs, targets,_,_,_) in enumerate(val_loader):
                     val_iter += 1
                     val_samples += inputs.size(0)
                     with torch.no_grad():
@@ -236,10 +180,10 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
                     save_path_model = (model_folder + '/model_rgb_state_dict.pth')
                     torch.save(model.state_dict(), save_path_model)
                     min_accuracy = val_accuracy
-            else:
-                if (epoch+1) % 10 == 0:
-                    save_path_model = (model_folder + '/model_rgb_state_dict_epoch' + str(epoch+1) + '.pth')
-                    torch.save(model.state_dict(), save_path_model)
+        else:
+            if (epoch+1) % 10 == 0:
+                save_path_model = (model_folder + '/model_rgb_state_dict_epoch' + str(epoch+1) + '.pth')
+                torch.save(model.state_dict(), save_path_model)
 
     train_log_loss.close()
     train_log_acc.close()
@@ -252,7 +196,7 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
 def __main__():
     parser = argparse.ArgumentParser()
     parser.add_argument('--stage', type=int, default=None, help='Training stage')
-    parser.add_argument('--model', type=str, default=None, help='model implementation')
+    parser.add_argument('--model', type=str, default="MyNet", help='model implementation')
     parser.add_argument('--supervision', type=str, default=None, help='Self-supervision task or not')
     parser.add_argument('--trainDatasetDir', type=str, default='./dataset/gtea_warped_flow_61/split2/train',
                         help='Train set directory')
@@ -270,7 +214,7 @@ def __main__():
     parser.add_argument('--lr_resnet', type=float, default=None, help='Learning rate')
     parser.add_argument('--stepSize', type=float, default=[25, 75, 150], nargs="+", help='Learning rate decay step')
     parser.add_argument('--decayRate', type=float, default=0.1, help='Learning rate decay rate')
-    parser.add_argument('--lossSupervision', type=str, default="classification", help='type of loss, regression or classification')
+    parser.add_argument('--lossSupervision', type=str, default="regression", help='type of loss, regression or classification')
     parser.add_argument('--memSize', type=int, default=512, help='ConvLSTM hidden state size')
 
     args = parser.parse_args()
@@ -292,6 +236,7 @@ def __main__():
     else: 
      print('invalid value for supervision')
      sys.exit()
+    
     stage1Dict = args.stage1Dict
     stage = args.stage
     model= args.model
@@ -307,7 +252,7 @@ def __main__():
     decayRate = args.decayRate
     memSize = args.memSize
     lossSupervision = args.lossSupervision
-    main_run(dataset, stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
+    main_run(stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
              valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decayRate, stepSize,lossSupervision, memSize)
 
 __main__()

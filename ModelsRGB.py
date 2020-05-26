@@ -2,6 +2,7 @@
 
 import torch
 import resnetMod
+import math
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.autograd import Variable
@@ -12,7 +13,7 @@ class SupervisionHead(nn.Module):
         super(SupervisionHead, self).__init__()
         self.conv= nn.Sequential(nn.ReLU(),
         		nn.Conv2d(in_channels,out_channels,kernel_size=1,padding=0))
-        self.fc= nn.Sequential(nn.Linear(h*w*out_channels,m*h*w))
+        self.fc= nn.Sequential(nn.Linear(7*7*out_channels,m*h*w))
     def forward(self,x):
         x=self.conv(x)
         x=x.view(x.shape[0],-1)
@@ -132,5 +133,57 @@ class SupervisedLSTMMod(nn.Module):
         feats = self.classifier(feats1)
         return feats, feats1, superv_x
 
+class DynamicFilters(nn.Module):
+    def __init__(self,in_channels,out_channels):
+        super(DynamicFilters, self).__init__()
+        self.out_channels=out_channels
+        self.conv= nn.Sequential(nn.ReLU(),
+        		nn.Conv2d(in_channels,in_channels//2,kernel_size=1,padding=0),
+                                 nn.ReLU(),
+                                 nn.Conv2d(in_channels//2,out_channels,kernel_size=3,padding=1))
+    def forward(self,x):
+        x=self.conv(x)
+        #batch,out_channel,in channel,size,size
+        x_n=x.reshape(x.shape[0],self.out_channels//3,3,x.shape[2],x.shape[3])
+        return x_n,x
+
+class MyNet(nn.Module):
+    def __init__(self, num_classes=61, mem_size=512):
+        super(MyNet, self).__init__()
+        self.num_classes = num_classes
+        self.resNet = resnetMod.resnet34(True, True)
+        self.mem_size = mem_size
+        self.weight_softmax = self.resNet.fc.weight
+        self.lstm_cell = MyConvLSTMCell(512, mem_size)
+        self.avgpool = nn.AvgPool2d(7)
+        self.dropout = nn.Dropout(0.7)
+        self.fc = nn.Linear(mem_size, self.num_classes)
+        self.classifier = nn.Sequential(self.dropout,self.fc)
+        self.sup_head= DynamicFilters(512,3*3)
+        self.conv= nn.Sequential(
+        		nn.Conv2d(521,512,kernel_size=1,padding=0),nn.ReLU())
+        #self.convDynamic=   nn.Conv2d(3, 3, 3, stride=1,padding=2, bias=False)
+
+    def forward(self, inputVariable):
+        state = (Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()),
+                 Variable(torch.zeros((inputVariable.size(1), self.mem_size, 7, 7)).cuda()))
+        superv_x=[]
+        features=[]
+        output_t=[]
+        for t in range(inputVariable.size(0)):
+            output = []
+            logit, feature_conv, feature_convNBN = self.resNet(inputVariable[t])
+            state = self.lstm_cell(feature_convNBN, state)
+            dynamic_filter,state_=self.sup_head(state[1])
+
+            for i in range(inputVariable.shape[1]):
+
+                output.append(  F.conv2d((inputVariable[t][i].unsqueeze(0)),dynamic_filter[i].float(),padding=3))
+            output_t.append(torch.stack(output))
+        output_t=torch.stack(output_t)
+
+        feats1 = self.avgpool(state[1]).view(state[1].size(0), -1)
+        feats = self.classifier(feats1)
+        return feats, feats1, output_t.squeeze(2)
 
 
