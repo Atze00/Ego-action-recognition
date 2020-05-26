@@ -120,10 +120,11 @@ def main_run(dataset, trainDir, valDir, outDir, stackSize, trainBatchSize, valBa
                 for j, (inputs, targets) in enumerate(val_loader):
                     val_iter += 1
                     val_samples += inputs.size(0)
-                    inputVariable = Variable(inputs.cuda(), volatile=True)
-                    labelVariable = Variable(targets.cuda(non_blocking=True), volatile=True)
-                    output_label, _ = model(inputVariable)
-                    val_loss = loss_fn(output_label, labelVariable)
+                    inputVariable = Variable(inputs.cuda())
+                    labelVariable = Variable(targets.cuda(non_blocking=True))
+                    with torch.no_grad():
+                      output_label, _ = model(inputVariable)
+                      val_loss = loss_fn(output_label, labelVariable)
                     val_loss_epoch += val_loss.item()
                     _, predicted = torch.max(output_label.data, 1)
                     numCorr += (predicted == targets.cuda()).sum()
