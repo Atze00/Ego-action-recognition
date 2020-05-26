@@ -121,7 +121,7 @@ def main_run(dataset, trainDir, valDir, outDir, stackSize, trainBatchSize, valBa
                     val_iter += 1
                     val_samples += inputs.size(0)
                     inputVariable = Variable(inputs.cuda(), volatile=True)
-                    labelVariable = Variable(targets.cuda(async=True), volatile=True)
+                    labelVariable = Variable(targets.cuda(non_blocking=True), volatile=True)
                     output_label, _ = model(inputVariable)
                     val_loss = loss_fn(output_label, labelVariable)
                     val_loss_epoch += val_loss.data[0]
