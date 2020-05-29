@@ -12,7 +12,7 @@ class twoStreamAttentionModel(nn.Module):
             self.flowModel.load_state_dict(torch.load(flowModel))
         self.frameModel = attentionModel(num_classes, memSize)
         if frameModel != '':
-            self.frameModel.load_state_dict(torch.load(frameModel))
+            self.frameModel.load_state_dict(torch.load(frameModel),strict=False)
         self.fc2 = nn.Linear(512 * 2, num_classes, bias=True)
         self.dropout = nn.Dropout(0.5)
         self.classifier = nn.Sequential(self.dropout, self.fc2)
