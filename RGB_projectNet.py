@@ -307,7 +307,7 @@ def __main__():
     decayRate = args.decayRate
     memSize = args.memSize
     lossSupervision = args.lossSupervision
-    main_run(dataset, stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
+    main_run( stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
              valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decayRate, stepSize,lossSupervision, memSize)
 
 __main__()
