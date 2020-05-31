@@ -28,7 +28,7 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
       print('Model not found')
       sys.exit()
     
-    model_folder = os.path.join('./', out_dir, dataset, 'rgb', 'stage'+str(stage))  # Dir for saving models and log files
+    model_folder = os.path.join('./', out_dir,  'rgb', 'stage'+str(stage))  # Dir for saving models and log files
     # Create the dir
     if os.path.exists(model_folder):
         print('Directory {} exists!'.format(model_folder))
