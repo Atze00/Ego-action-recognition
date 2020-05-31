@@ -152,9 +152,9 @@ def main_run(dataset, flowModel, rgbModel, stackSize, seqLen, memSize, trainData
             optimizer_fn.step()
             _, predicted = torch.max(output_label.data, 1)
             numCorrTrain += (predicted == targets.cuda()).sum()
-            epoch_loss += loss.data[0]
+            epoch_loss += loss.item()
         avg_loss = epoch_loss / iterPerEpoch
-        trainAccuracy = (numCorrTrain / trainSamples) * 100
+        trainAccuracy = (numCorrTrain / float(trainSamples)) * 100
         print('Average training loss after {} epoch = {} '.format(epoch + 1, avg_loss))
         print('Training accuracy after {} epoch = {}% '.format(epoch + 1, trainAccuracy))
         writer.add_scalar('train/epoch_loss', avg_loss, epoch + 1)
@@ -174,10 +174,10 @@ def main_run(dataset, flowModel, rgbModel, stackSize, seqLen, memSize, trainData
                     labelVariable = Variable(targets.cuda())
                     output_label = model(inputVariableFlow, inputVariableFrame)
                     loss = loss_fn(F.log_softmax(output_label, dim=1), labelVariable)
-                    val_loss_epoch += loss.data[0]
+                    val_loss_epoch += loss.item()
                     _, predicted = torch.max(output_label.data, 1)
                     numCorr += (predicted == labelVariable.data).sum()
-                val_accuracy = (numCorr / valSamples) * 100
+                val_accuracy = (numCorr / float(valSamples)) * 100
                 avg_val_loss = val_loss_epoch / val_iter
                 print('Val Loss after {} epochs, loss = {}'.format(epoch + 1, avg_val_loss))
                 print('Val Accuracy after {} epochs = {}%'.format(epoch + 1, val_accuracy))

@@ -102,9 +102,9 @@ def main_run(dataset, trainDir, valDir, outDir, stackSize, trainBatchSize, valBa
             optimizer_fn.step()
             _, predicted = torch.max(output_label.data, 1)
             numCorrTrain += (predicted == targets.cuda()).sum()
-            epoch_loss += loss.data[0]
-        avg_loss = epoch_loss/iterPerEpoch
-        trainAccuracy = (numCorrTrain / trainSamples) * 100
+            epoch_loss += loss.item()
+        avg_loss = epoch_loss/float(iterPerEpoch)
+        trainAccuracy = (numCorrTrain / float(trainSamples) )* 100
         print('Train: Epoch = {} | Loss = {} | Accuracy = {}'.format(epoch + 1, avg_loss, trainAccuracy))
         writer.add_scalar('train/epoch_loss', avg_loss, epoch+1)
         writer.add_scalar('train/accuracy', trainAccuracy, epoch+1)
@@ -120,14 +120,15 @@ def main_run(dataset, trainDir, valDir, outDir, stackSize, trainBatchSize, valBa
                 for j, (inputs, targets) in enumerate(val_loader):
                     val_iter += 1
                     val_samples += inputs.size(0)
-                    inputVariable = Variable(inputs.cuda(), volatile=True)
-                    labelVariable = Variable(targets.cuda(non_blocking=True), volatile=True)
-                    output_label, _ = model(inputVariable)
-                    val_loss = loss_fn(output_label, labelVariable)
-                    val_loss_epoch += val_loss.data[0]
+                    inputVariable = Variable(inputs.cuda())
+                    labelVariable = Variable(targets.cuda(non_blocking=True))
+                    with torch.no_grad():
+                      output_label, _ = model(inputVariable)
+                      val_loss = loss_fn(output_label, labelVariable)
+                    val_loss_epoch += val_loss.item()
                     _, predicted = torch.max(output_label.data, 1)
                     numCorr += (predicted == targets.cuda()).sum()
-                val_accuracy = (numCorr / val_samples) * 100
+                val_accuracy = (numCorr / float(val_samples)) * 100
                 avg_val_loss = val_loss_epoch / val_iter
                 print('Validation: Epoch = {} | Loss = {} | Accuracy = {}'.format(epoch + 1, avg_val_loss, val_accuracy))
                 writer.add_scalar('val/epoch_loss', avg_val_loss, epoch + 1)
