@@ -13,7 +13,7 @@ import sys
 
 
 def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_dict, out_dir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decay_factor, decay_step,lossSupervision, memSize):
+             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, alpha, decay_factor, decay_step,lossSupervision, memSize):
 
 
     num_classes = 61
@@ -212,6 +212,7 @@ def __main__():
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('--lr_suphead', type=float, default=None, help='Learning rate')
     parser.add_argument('--lr_resnet', type=float, default=None, help='Learning rate')
+    parser.add_argument('--alpha', type=float, default=1, help='supervised loss multiplier')
     parser.add_argument('--stepSize', type=float, default=[25, 75, 150], nargs="+", help='Learning rate decay step')
     parser.add_argument('--decayRate', type=float, default=0.1, help='Learning rate decay rate')
     parser.add_argument('--lossSupervision', type=str, default="regression", help='type of loss, regression or classification')
@@ -240,6 +241,7 @@ def __main__():
     stage1Dict = args.stage1Dict
     stage = args.stage
     model= args.model
+    alpha = args.alpha
     trainDatasetDir = args.trainDatasetDir
     valDatasetDir = args.valDatasetDir
     outDir = args.outDir
@@ -253,6 +255,6 @@ def __main__():
     memSize = args.memSize
     lossSupervision = args.lossSupervision
     main_run(stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, decayRate, stepSize,lossSupervision, memSize)
+             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet,  alpha,decayRate, stepSize,lossSupervision, memSize)
 
 __main__()
