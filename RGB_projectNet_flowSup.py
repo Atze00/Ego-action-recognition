@@ -124,7 +124,7 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
 
               loss_=loss_sup(output_super,m.cuda())
               epoch_loss_ += loss_.data.item()
-              loss_=loss_*0.1
+              loss_=loss_*alpha
               loss_.backward(retain_graph=True)
 
             loss = loss_fn(output_label, labelVariable)
