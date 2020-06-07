@@ -5,7 +5,7 @@ from attentionMapModel import attentionMap
 from ModelsRGB import *
 from PIL import Image
 
-def generateAttentionMap(model_state_dict):
+def generateAttentionMap(model_state_dict,fl_name_in,fl_name_out):
     num_classes = 61 # Classes in the pre-trained model
     mem_size = 512 # Weights of the pre-trained model
 
@@ -32,8 +32,6 @@ def generateAttentionMap(model_state_dict):
         normalize])
 
 
-    fl_name_in = 'test_image.jpg'
-    fl_name_out = 'test_image_attention.jpg'
     img_pil = Image.open(fl_name_in)
     img_pil1 = preprocess1(img_pil)
     img_size = img_pil1.size
