@@ -25,7 +25,8 @@ def gen_split(root_dir):
             if insts != []:
                 for inst in insts:
                     inst_dir = os.path.join(dir1, inst, "rgb")
-                    
+                    if os.path.isdir(inst_dir)==False:
+                      continue
                     inst_dir_mmaps = os.path.join(dir1, inst, "mmaps")
                     numFrames_mmaps = len(glob.glob1(inst_dir_mmaps, '*.png'))
                     numFrames = len(glob.glob1(inst_dir, '*.png'))
