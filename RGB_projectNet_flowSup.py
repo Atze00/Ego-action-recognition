@@ -1,10 +1,7 @@
 from __future__ import print_function, division
 from ModelsRGB import *
 from spatial_transforms import (Compose, ToTensor, CenterCrop, Scale, Normalize, MultiScaleCornerCrop,
-                                RandomHorizontalFlip)
-from torchvision.transforms import Resize 
-from torchvision.transforms import ToTensor as TT
-from torchvision.transforms import Compose as Cp
+                                RandomHorizontalFlip,UnNormalize)
 from tensorboardX import SummaryWriter
 from makeDatasetRGB_flowsupervision import *
 from torchvision.utils import save_image
@@ -12,20 +9,18 @@ import argparse
 import sys
 
 
-def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_dict, out_dir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet, alpha, decay_factor, decay_step,lossSupervision, memSize):
-
+def main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len, train_batch_size,
+             val_batch_size, num_epochs, lr1, lr_suphead, lr_resnet, alpha, decay_factor, decay_step, 
+             mem_size):
 
     num_classes = 61
-
-    
-    if model=='MyNet':
-      model=MyNet(num_classes=num_classes, mem_size=memSize)
+    if model == 'MyNet':
+        model = MyNet(num_classes=num_classes, mem_size=mem_size)
     else:
-      print('Model not found')
-      sys.exit()
+        print('Model not found')
+        sys.exit()
     
-    model_folder = os.path.join('./', out_dir, 'rgb', 'stage'+str(stage))  # Dir for saving models and log files
+    model_folder = os.path.join('./', out_dir, 'rgb')  # Dir for saving models and log files
     # Create the dir
     if os.path.exists(model_folder):
         print('Directory {} exists!'.format(model_folder))
@@ -39,36 +34,31 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
     val_log_loss = open((model_folder + '/val_log_loss.txt'), 'w')
     val_log_acc = open((model_folder + '/val_log_acc.txt'), 'w')
 
-
     # Data loader
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    unnormalize = UnNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     spatial_transform = Compose([Scale(256), RandomHorizontalFlip(), MultiScaleCornerCrop([1, 0.875, 0.75, 0.65625], 224),
                                  ToTensor(), normalize])
-    spatial_transform_map = Cp([Scale(256), RandomHorizontalFlip(), MultiScaleCornerCrop([1, 0.875, 0.75, 0.65625], 224), Resize((7,7)),
-                                 TT()])
-    spatial_transform_map_2 = Cp([ Resize((7,7)),
-                                 TT()])
-    vid_seq_train = makeDataset(train_data_dir,train=True,
-                                spatial_transform=spatial_transform, spatial_transform_map=spatial_transform_map,seqLen=seqLen, fmt='.png')
+    vid_seq_train = MakeDataset(train_data_dir, train=True,
+                                spatial_transform=spatial_transform, 
+                                seq_len=seq_len, fmt='.png')
 
-    train_loader = torch.utils.data.DataLoader(vid_seq_train, batch_size=trainBatchSize,
-                            shuffle=True, num_workers=8, pin_memory=True)
+    train_loader = torch.utils.data.DataLoader(vid_seq_train, batch_size=train_batch_size,
+                                               shuffle=True, num_workers=8, pin_memory=True)
     if val_data_dir is not None:
+        vid_seq_val = MakeDataset(val_data_dir, train=False,
+                                  spatial_transform=Compose([Scale(256), CenterCrop(224), ToTensor(), normalize]),
+                                  seq_len=seq_len, fmt='.png')
 
-        vid_seq_val = makeDataset(val_data_dir,train=False,spatial_transform_map=spatial_transform_map_2,
-                                   spatial_transform=Compose([Scale(256), CenterCrop(224), ToTensor(), normalize]),
-                                   seqLen=seqLen, fmt='.png')
+        val_loader = torch.utils.data.DataLoader(vid_seq_val, batch_size=val_batch_size,
+                                                 shuffle=False, num_workers=8, pin_memory=True)
 
-        val_loader = torch.utils.data.DataLoader(vid_seq_val, batch_size=valBatchSize,
-                                shuffle=False, num_workers=8, pin_memory=True)
-        valInstances = vid_seq_val.__len__()
-    trainInstances = vid_seq_train.__len__()
     train_params = []
     train_params3 = []
     train_params2 = []
     for params in model.resNet.parameters():
-      params.requires_grad = True
-      train_params += [params]
+        params.requires_grad = True
+        train_params += [params]
         
     for params in model.lstm_cell.parameters():
         params.requires_grad = True
@@ -81,95 +71,89 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
         params.requires_grad = True
         train_params3 += [params]
 
-    model.lstm_cell.train()
-    model.classifier.train()
+    model.train()
     model.cuda()
-    if lossSupervision=="classification":
-      loss_sup=nn.CrossEntropyLoss()
-    elif lossSupervision=="regression":
-      loss_sup=nn.MSELoss()
+    loss_sup = nn.MSELoss()
     loss_fn = nn.CrossEntropyLoss()
-    optimizer_fn = torch.optim.Adam([{"params":train_params,"lr": lr_resnet},{"params":train_params3,"lr":lr_suphead},
-       {"params":train_params2,"lr":lr1}] , lr=lr1, weight_decay=4e-5, eps=1e-4)
+    optimizer_fn = torch.optim.Adam([{"params": train_params, "lr": lr_resnet}, 
+                                     {"params": train_params3, "lr": lr_suphead},
+                                     {"params": train_params2, "lr": lr1}], 
+                                    lr=lr1, weight_decay=4e-5, eps=1e-4)
+    
     optim_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_fn, milestones=decay_step,
                                                            gamma=decay_factor)
 
     train_iter = 0
     min_accuracy = 0
-    loss=0
 
-    for epoch in range(numEpochs):
+    for epoch in range(num_epochs):
         epoch_loss = 0
-        numCorrTrain = 0
-        trainSamples = 0
-        iterPerEpoch = 0
+        num_corr_train = 0
+        train_samples = 0
+        iter_per_epoch = 0
         epoch_loss_ = 0
-        loss_=0
-        model.lstm_cell.train(True)
-        model.classifier.train(True)
         writer.add_scalar('lr', optimizer_fn.param_groups[0]['lr'], epoch+1)
-
         model.train()
-        for i, (inputs, targets,maps,m,_) in enumerate(train_loader):
+        for i, (inputs, targets, m) in enumerate(train_loader):
             train_iter += 1
-            iterPerEpoch += 1
+            iter_per_epoch += 1
             optimizer_fn.zero_grad()
-            inputVariable = Variable(inputs.permute(1, 0, 2, 3, 4).cuda())
-            labelVariable = Variable(targets.cuda())
-            m=m.permute(1,0,2,3,4).cuda()
-              
-            trainSamples += inputs.size(0)
-            output_label, _,output_super = model(inputVariable)
-            if supervision==True:
+            images = inputs.permute(1, 0, 2, 3, 4).cuda()
+            labels = targets.cuda()
+            m = m.permute(1, 0, 2, 3, 4).cuda()
+            train_samples += inputs.size(0)
+            output_label, _, output_super = model(images)
+            if supervision:
+                loss_ = loss_sup(output_super, m.cuda())
+                epoch_loss_ += loss_.data.item()
 
-              loss_=loss_sup(output_super,m.cuda())
-              epoch_loss_ += loss_.data.item()
-              loss_=loss_*alpha
-              loss_.backward(retain_graph=True)
-
-            loss = loss_fn(output_label, labelVariable)
-            loss.backward()
+            loss = loss_fn(output_label, labels)
             epoch_loss += loss.data.item()
+            if supervision:
+                loss = loss+loss_*alpha
+            loss.backward()
             optimizer_fn.step()
             _, predicted = torch.max(output_label.data, 1)
-            numCorrTrain += (predicted == targets.cuda()).sum()
+            num_corr_train += (predicted == targets.cuda()).sum()
             
         optim_scheduler.step()
-        avg_loss = epoch_loss/iterPerEpoch
-        trainAccuracy = (numCorrTrain / float(trainSamples)) * 100
-        output_super=output_super.cpu()
-        m=m.cpu()
-        if (epoch%2==0) and supervision==True:
-          d=f"./Results/epoch{epoch}"
-          os.makedirs(d)
-          for i in range(m.shape[0]):
-            save_image(m[i,0], d+f'/inp{i}.png')
-            save_image(output_super[i,0].detach(),d+f'/out{i}.png')
-        avg_loss_ = epoch_loss_/float(iterPerEpoch)
-        print('Train: Epoch = {} | Loss = {} | Accuracy = {} | supervision_loss {}'.format(epoch+1, avg_loss, trainAccuracy,avg_loss_))
+        avg_loss = epoch_loss/iter_per_epoch
+        train_acc = (num_corr_train / float(train_samples)) * 100
+        output_super = output_super.cpu()
+        m = m.cpu()
+        if (epoch % 2 == 0) and supervision:
+            d = f"./Results/epoch{epoch}"
+            os.makedirs(d)
+            for i in range(m.shape[0]):
+                save_image(unnormalize(m[i, 0]), d+f'/inp{i}.png')
+                save_image(unnormalize(output_super[i, 0].detach()), d+f'/out{i}.png')
+        avg_loss_ = epoch_loss_/float(iter_per_epoch)
+        print('Train: Epoch = {} | Loss = {} | Accuracy = {} | supervision_loss {}'.format(epoch+1, avg_loss,
+                                                                                           train_acc, avg_loss_))
         train_log_loss.write('Train Loss after {} epochs = {}\n'.format(epoch + 1, avg_loss))
-        train_log_acc.write('Train Accuracy after {} epochs = {}%\n'.format(epoch + 1, trainAccuracy))
+        train_log_acc.write('Train Accuracy after {} epochs = {}%\n'.format(epoch + 1, train_acc))
         writer.add_scalar('train/epoch_loss', avg_loss, epoch+1)
-        writer.add_scalar('train/accuracy', trainAccuracy, epoch+1)
+        writer.add_scalar('train/accuracy', train_acc, epoch+1)
+
         if val_data_dir is not None:
             if (epoch+1) % 1 == 0:
                 model.eval()
                 val_loss_epoch = 0
                 val_iter = 0
                 val_samples = 0
-                numCorr = 0
-                for j, (inputs, targets,_,_,_) in enumerate(val_loader):
+                num_corr = 0
+                for j, (inputs, targets, _) in enumerate(val_loader):
                     val_iter += 1
                     val_samples += inputs.size(0)
                     with torch.no_grad():
-                      inputVariable = Variable(inputs.permute(1, 0, 2, 3, 4).cuda())
-                      labelVariable = Variable(targets.cuda(non_blocking=True))
-                      output_label, _,_ = model(inputVariable)
-                      val_loss = loss_fn(output_label, labelVariable)
-                      val_loss_epoch += val_loss.data.item()
-                      _, predicted = torch.max(output_label.data, 1)
-                      numCorr += (predicted == targets.cuda()).sum()
-                val_accuracy = (numCorr / float(val_samples)) * 100
+                        images = inputs.permute(1, 0, 2, 3, 4).cuda()
+                        labels = targets.cuda(non_blocking=True)
+                        output_label, _, _ = model(images)
+                        val_loss = loss_fn(output_label, labels)
+                        val_loss_epoch += val_loss.data.item()
+                        _, predicted = torch.max(output_label.data, 1)
+                        num_corr += (predicted == targets.cuda()).sum()
+                val_accuracy = (num_corr / float(val_samples)) * 100
                 avg_val_loss = val_loss_epoch / val_iter
                 print('val: Epoch = {} | Loss = {} | Accuracy = {} '.format(epoch+1, avg_val_loss, val_accuracy))
                 writer.add_scalar('val/epoch_loss', avg_val_loss, epoch + 1)
@@ -195,66 +179,61 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
 
 def __main__():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--stage', type=int, default=None, help='Training stage')
     parser.add_argument('--model', type=str, default="MyNet", help='model implementation')
     parser.add_argument('--supervision', type=str, default=None, help='Self-supervision task or not')
-    parser.add_argument('--trainDatasetDir', type=str, default='./dataset/gtea_warped_flow_61/split2/train',
+    parser.add_argument('--train_data_dir', type=str, default='./dataset/gtea_warped_flow_61/split2/train',
                         help='Train set directory')
-    parser.add_argument('--valDatasetDir', type=str, default=None,
+    parser.add_argument('--val_data_dir', type=str, default=None,
                         help='Val set directory')
-    parser.add_argument('--outDir', type=str, default='experiments', help='Directory to save results')
-    parser.add_argument('--stage1Dict', type=str, default=None,
-                        help='Stage 1 model path')
-    parser.add_argument('--seqLen', type=int, default=25, help='Length of sequence')
-    parser.add_argument('--trainBatchSize', type=int, default=32, help='Training batch size')
-    parser.add_argument('--valBatchSize', type=int, default=64, help='Validation batch size')
-    parser.add_argument('--numEpochs', type=int, default=300, help='Number of epochs')
+    parser.add_argument('--out_dir', type=str, default='experiments', help='Directory to save results')
+    parser.add_argument('--seq_len', type=int, default=25, help='Length of sequence')
+    parser.add_argument('--train_batch_size', type=int, default=32, help='Training batch size')
+    parser.add_argument('--val_batch_size', type=int, default=64, help='Validation batch size')
+    parser.add_argument('--num_epochs', type=int, default=300, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('--lr_suphead', type=float, default=None, help='Learning rate')
     parser.add_argument('--lr_resnet', type=float, default=None, help='Learning rate')
-    parser.add_argument('--alpha', type=float, default=1, help='supervised loss multiplier')
-    parser.add_argument('--stepSize', type=float, default=[25, 75, 150], nargs="+", help='Learning rate decay step')
-    parser.add_argument('--decayRate', type=float, default=0.1, help='Learning rate decay rate')
-    parser.add_argument('--lossSupervision', type=str, default="regression", help='type of loss, regression or classification')
-    parser.add_argument('--memSize', type=int, default=512, help='ConvLSTM hidden state size')
+    parser.add_argument('--alpha', type=float, default=0.1, help='supervised loss multiplier')
+    parser.add_argument('--step_size', type=float, default=[25, 75, 150], nargs="+", help='Learning rate decay step')
+    parser.add_argument('--decay_rate', type=float, default=0.1, help='Learning rate decay rate')
+    parser.add_argument('--mem_size', type=int, default=512, help='ConvLSTM hidden state size')
 
     args = parser.parse_args()
-    if args.lr_suphead==None:
-     lr_suphead=args.lr
+    if args.lr_suphead is None:
+        lr_suphead = args.lr
     else:
-     lr_suphead=args.lr_suphead
+        lr_suphead = args.lr_suphead
     
-    if args.lr_resnet==None:
-     lr_resnet=args.lr
+    if args.lr_resnet is None:
+        lr_resnet = args.lr
     else:
-     lr_resnet=args.lr_resnet
-    
-    
-    if args.supervision=="True":
-     supervision=True
-    elif args.supervision=="False":
-     supervision=False
+        lr_resnet = args.lr_resnet
+
+    if args.supervision == "True":
+        supervision = True
+    elif args.supervision == "False":
+        supervision = False
     else: 
-     print('invalid value for supervision')
-     sys.exit()
-    
-    stage1Dict = args.stage1Dict
-    stage = args.stage
-    model= args.model
+        print('invalid value for supervision')
+        sys.exit()
+
+    model = args.model
     alpha = args.alpha
-    trainDatasetDir = args.trainDatasetDir
-    valDatasetDir = args.valDatasetDir
-    outDir = args.outDir
-    seqLen = args.seqLen
-    trainBatchSize = args.trainBatchSize
-    valBatchSize = args.valBatchSize
-    numEpochs = args.numEpochs
+    train_data_dir = args.train_data_dir
+    val_data_dir = args.val_data_dir
+    out_dir = args.out_dir
+    seq_len = args.seq_len
+    train_batch_size = args.train_batch_size
+    val_batch_size = args.val_batch_size
+    num_epochs = args.num_epochs
     lr1 = args.lr
-    stepSize = args.stepSize
-    decayRate = args.decayRate
-    memSize = args.memSize
-    lossSupervision = args.lossSupervision
-    main_run(stage, model,supervision,trainDatasetDir, valDatasetDir, stage1Dict, outDir, seqLen, trainBatchSize,
-             valBatchSize, numEpochs, lr1,lr_suphead, lr_resnet,  alpha,decayRate, stepSize,lossSupervision, memSize)
+    decay_step = args.step_size
+    decay_factor = args.decay_rate
+    mem_size = args.mem_size
+    main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len, train_batch_size,
+             val_batch_size, num_epochs, lr1, lr_suphead, lr_resnet, alpha, decay_factor, decay_step,
+             mem_size)
+
+
 
 __main__()

@@ -1,7 +1,9 @@
 import random
 import math
+
 import numbers
 import collections
+import torchvision
 import numpy as np
 import torch
 from PIL import Image, ImageOps
@@ -89,6 +91,24 @@ class ToTensor(object):
         pass
 
 
+class UnNormalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be unnormalized.
+        Returns:
+            Tensor: unNormalized image.
+        """
+        for t, m, s in zip(tensor, self.mean, self.std):
+            t.mul_(s).add_(m)
+            # The normalize code -> t.sub_(m).div_(s)
+        return tensor
+
+
 class Normalize(object):
     """Normalize an tensor image with mean and standard deviation.
     Given mean: (R, G, B) and std: (R, G, B),
@@ -118,9 +138,8 @@ class Normalize(object):
         else:
             mean = self.mean
             std = self.std
-        for t, m, s in zip(tensor, mean, std):
-            t.sub_(m).div_(s)
-        return tensor
+        norm=torchvision.transforms.Normalize(mean,std)
+        return norm(tensor)
 
     def randomize_parameters(self):
         pass
