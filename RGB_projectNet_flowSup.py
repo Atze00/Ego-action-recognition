@@ -9,7 +9,7 @@ import argparse
 import sys
 
 
-def main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len, train_batch_size,
+def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict, out_dir, seq_len, train_batch_size,
              val_batch_size, num_epochs, lr1, lr_suphead, lr_resnet, alpha, decay_factor, decay_step, 
              mem_size):
 
@@ -56,9 +56,53 @@ def main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len,
     train_params = []
     train_params3 = []
     train_params2 = []
-    for params in model.resNet.parameters():
-        params.requires_grad = True
-        train_params += [params]
+    if stage == 1:
+        supervision = False
+        model.eval()
+        for params in model.parameters():
+            params.requires_grad = False
+    else:
+        model.load_state_dict(torch.load(stage1dict))
+        model.train()
+        for params in model.parameters():
+            params.requires_grad = False
+        #
+        for params in model.resNet.layer4[0].conv1.parameters():
+            params.requires_grad = True
+            train_params += [params]
+
+        for params in model.resNet.layer4[0].conv2.parameters():
+            params.requires_grad = True
+            train_params += [params]
+
+        for params in model.resNet.layer4[1].conv1.parameters():
+            params.requires_grad = True
+            train_params += [params]
+
+        for params in model.resNet.layer4[1].conv2.parameters():
+            params.requires_grad = True
+            train_params += [params]
+
+        for params in model.resNet.layer4[2].conv1.parameters():
+            params.requires_grad = True
+            train_params += [params]
+        #
+        for params in model.resNet.layer4[2].conv2.parameters():
+            params.requires_grad = True
+            train_params += [params]
+        #
+        for params in model.resNet.fc.parameters():
+            params.requires_grad = True
+            train_params += [params]
+
+        model.resNet.layer4[0].conv1.train(True)
+        model.resNet.layer4[0].conv2.train(True)
+        model.resNet.layer4[1].conv1.train(True)
+        model.resNet.layer4[1].conv2.train(True)
+        model.resNet.layer4[2].conv1.train(True)
+        model.resNet.layer4[2].conv2.train(True)
+        model.resNet.fc.train(True)
+        model.sup_head.train()
         
     for params in model.lstm_cell.parameters():
         params.requires_grad = True
@@ -92,6 +136,17 @@ def main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len,
         train_samples = 0
         iter_per_epoch = 0
         epoch_loss_ = 0
+        model.lstm_cell.train()
+        model.classifier.train()
+        if stage == 2:
+            model.resNet.layer4[0].conv1.train()
+            model.resNet.layer4[0].conv2.train()
+            model.resNet.layer4[1].conv1.train()
+            model.resNet.layer4[1].conv2.train()
+            model.resNet.layer4[2].conv1.train()
+            model.resNet.layer4[2].conv2.train()
+            model.sup_head.train()
+            model.resNet.fc.train()
         writer.add_scalar('lr', optimizer_fn.param_groups[0]['lr'], epoch+1)
         model.train()
         for i, (inputs, targets, m) in enumerate(train_loader):
@@ -106,11 +161,10 @@ def main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len,
             if supervision:
                 loss_ = loss_sup(output_super, m.cuda())
                 epoch_loss_ += loss_.data.item()
-
             loss = loss_fn(output_label, labels)
             epoch_loss += loss.data.item()
             if supervision:
-                loss = loss+loss_*alpha
+                loss = loss + loss_*alpha
             loss.backward()
             optimizer_fn.step()
             _, predicted = torch.max(output_label.data, 1)
@@ -177,8 +231,11 @@ def main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len,
     writer.close()
 
 
+
+
 def __main__():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--stage', type=int, default=None, help='Training stage')
     parser.add_argument('--model', type=str, default="MyNet", help='model implementation')
     parser.add_argument('--supervision', type=str, default=None, help='Self-supervision task or not')
     parser.add_argument('--train_data_dir', type=str, default='./dataset/gtea_warped_flow_61/split2/train',
@@ -186,6 +243,8 @@ def __main__():
     parser.add_argument('--val_data_dir', type=str, default=None,
                         help='Val set directory')
     parser.add_argument('--out_dir', type=str, default='experiments', help='Directory to save results')
+    parser.add_argument('--stage1dict', type=str, default='./experiments/gtea61/rgb/stage1/best_model_state_dict.pth',
+                        help='Stage 1 model path')
     parser.add_argument('--seq_len', type=int, default=25, help='Length of sequence')
     parser.add_argument('--train_batch_size', type=int, default=32, help='Training batch size')
     parser.add_argument('--val_batch_size', type=int, default=64, help='Validation batch size')
@@ -216,7 +275,7 @@ def __main__():
     else: 
         print('invalid value for supervision')
         sys.exit()
-
+    stage1dict = args.stage1dict
     model = args.model
     alpha = args.alpha
     train_data_dir = args.train_data_dir
@@ -228,9 +287,10 @@ def __main__():
     num_epochs = args.num_epochs
     lr1 = args.lr
     decay_step = args.step_size
+    stage = args.stage
     decay_factor = args.decay_rate
     mem_size = args.mem_size
-    main_run(model, supervision, train_data_dir, val_data_dir, out_dir, seq_len, train_batch_size,
+    main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict, out_dir, seq_len, train_batch_size,
              val_batch_size, num_epochs, lr1, lr_suphead, lr_resnet, alpha, decay_factor, decay_step,
              mem_size)
 
