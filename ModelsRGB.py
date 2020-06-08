@@ -112,9 +112,7 @@ class DynamicFilters(nn.Module):
         x = self.conv(x)
         # batch,out_channel,in channel,size,size
         x_n = x.reshape(x.shape[0], self.out_channels // 3, 3, x.shape[2], x.shape[3])
-        x = nn.ReLU()(x)
-        x = self.conv2(x)
-        return torch.sigmoid(x_n), x
+        return x_n
 
 
 class MyNet(nn.Module):
@@ -155,8 +153,7 @@ class MyNet(nn.Module):
             attention_feat = feature_convNBN * attention_map.expand_as(feature_conv)
             
             
-            f=torch.cat((attention_feat, state_), 1)
-            state = self.lstm_cell(f, state)
+            state = self.lstm_cell(attention_feat, state)
             dynamic_filter, state_ = self.sup_head(state[1])
 
             for i in range(x.shape[1]):
