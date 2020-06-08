@@ -135,7 +135,6 @@ class MyNet(nn.Module):
     def forward(self, x):
         state = (torch.zeros((x.size(1), self.mem_size, 7, 7)).cuda(),
                  torch.zeros((x.size(1), self.mem_size, 7, 7)).cuda())
-        state_ = torch.zeros(x.size(1), 9, 7, 7).cuda()
         output_t = []
         for t in range(x.size(0)):
             output = []
@@ -154,7 +153,7 @@ class MyNet(nn.Module):
             
             
             state = self.lstm_cell(attention_feat, state)
-            dynamic_filter, state_ = self.dinam(state[1])
+            dynamic_filter = self.dinam(state[1])
 
             for i in range(x.shape[1]):
                 output.append(F.conv2d((x[t][i].unsqueeze(0)),
