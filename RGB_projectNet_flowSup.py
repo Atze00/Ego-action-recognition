@@ -102,7 +102,7 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
         model.resNet.layer4[2].conv1.train(True)
         model.resNet.layer4[2].conv2.train(True)
         model.resNet.fc.train(True)
-        model.sup_head.train()
+        model.dinam.train()
         
     for params in model.lstm_cell.parameters():
         params.requires_grad = True
@@ -111,7 +111,7 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
     for params in model.classifier.parameters():
         params.requires_grad = True
         train_params2 += [params]
-    for params in model.sup_head.parameters():
+    for params in model.dinam.parameters():
         params.requires_grad = True
         train_params3 += [params]
 
@@ -145,7 +145,7 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
             model.resNet.layer4[1].conv2.train()
             model.resNet.layer4[2].conv1.train()
             model.resNet.layer4[2].conv2.train()
-            model.sup_head.train()
+            model.dinam.train()
             model.resNet.fc.train()
         writer.add_scalar('lr', optimizer_fn.param_groups[0]['lr'], epoch+1)
 
