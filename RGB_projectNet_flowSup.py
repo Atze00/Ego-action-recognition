@@ -62,7 +62,7 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
         for params in model.parameters():
             params.requires_grad = False
     else:
-        model.load_state_dict(torch.load(stage1dict))
+        model.load_state_dict(torch.load(stage1dict),strict=False)
         model.train()
         for params in model.parameters():
             params.requires_grad = False
