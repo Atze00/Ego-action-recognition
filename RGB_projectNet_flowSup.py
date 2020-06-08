@@ -148,7 +148,7 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
             model.sup_head.train()
             model.resNet.fc.train()
         writer.add_scalar('lr', optimizer_fn.param_groups[0]['lr'], epoch+1)
-        model.train()
+
         for i, (inputs, targets, m) in enumerate(train_loader):
             train_iter += 1
             iter_per_epoch += 1
