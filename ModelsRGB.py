@@ -142,7 +142,20 @@ class MyNet(nn.Module):
         for t in range(x.size(0)):
             output = []
             logit, feature_conv, feature_convNBN = self.resNet(x[t])
-            f=torch.cat((feature_convNBN, state_), 1)
+            
+            
+            
+            bz, nc, h, w = feature_conv.size()
+            feature_conv1 = feature_conv.view(bz, nc, h * w)
+            probs, idxs = logit.sort(1, True)
+            class_idx = idxs[:, 0]
+            cam = torch.bmm(self.weight_softmax[class_idx].unsqueeze(1), feature_conv1)
+            attention_map = F.softmax(cam.squeeze(1), dim=1)
+            attention_map = attention_map.view(attention_map.size(0), 1, 7, 7)
+            attention_feat = feature_convNBN * attention_map.expand_as(feature_conv)
+            
+            
+            f=torch.cat((attention_feat, state_), 1)
             state = self.lstm_cell(f, state)
             dynamic_filter, state_ = self.sup_head(state[1])
 
