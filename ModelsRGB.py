@@ -122,13 +122,13 @@ class MyNet(nn.Module):
         self.resNet = resnetMod.resnet34(True, True)
         self.mem_size = mem_size
         self.weight_softmax = self.resNet.fc.weight
-        self.lstm_cell = MyConvLSTMCell(521, mem_size)
+        self.lstm_cell = MyConvLSTMCell(512, mem_size)
         self.avgpool = nn.AvgPool2d(7)
         self.dropout = nn.Dropout(0.7)
         self.fc = nn.Linear(mem_size, self.num_classes)
         self.classifier = nn.Sequential(self.dropout, self.fc)
         self.sup_head = DynamicFilters(512, 3 * 3)
-        self.conv = nn.Sequential(nn.Conv2d(521, 512, kernel_size=1, padding=0),
+        self.conv = nn.Sequential(nn.Conv2d(512, 512, kernel_size=1, padding=0),
                                   nn.ReLU())
         # self.convDynamic=   nn.Conv2d(3, 3, 3, stride=1,padding=2, bias=False)
 
