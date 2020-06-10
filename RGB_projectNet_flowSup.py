@@ -44,14 +44,14 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
                                 seq_len=seq_len, fmt='.png')
 
     train_loader = torch.utils.data.DataLoader(vid_seq_train, batch_size=train_batch_size,
-                                               shuffle=True, num_workers=8, pin_memory=True)
+                                               shuffle=True, num_workers=2, pin_memory=True)
     if val_data_dir is not None:
         vid_seq_val = MakeDataset(val_data_dir, train=False,
                                   spatial_transform=Compose([Scale(256), CenterCrop(224), ToTensor(), normalize]),
                                   seq_len=seq_len, fmt='.png')
 
         val_loader = torch.utils.data.DataLoader(vid_seq_val, batch_size=val_batch_size,
-                                                 shuffle=False, num_workers=8, pin_memory=True)
+                                                 shuffle=False, num_workers=2, pin_memory=True)
 
     train_params = []
     train_params3 = []
@@ -247,7 +247,7 @@ def __main__():
                         help='Stage 1 model path')
     parser.add_argument('--seq_len', type=int, default=25, help='Length of sequence')
     parser.add_argument('--train_batch_size', type=int, default=32, help='Training batch size')
-    parser.add_argument('--val_batch_size', type=int, default=64, help='Validation batch size')
+    parser.add_argument('--val_batch_size', type=int, default=32, help='Validation batch size')
     parser.add_argument('--num_epochs', type=int, default=300, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('--lr_suphead', type=float, default=None, help='Learning rate')
