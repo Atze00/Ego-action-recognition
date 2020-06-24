@@ -115,7 +115,7 @@ class MakeDataset_flowsupervision(Dataset):
             fl_name = vid_name + '/' + 'rgb' + str(int(np.floor(i))).zfill(4) + self.fmt
             fl_name_mmaps = vid_name + '/' + 'rgb' + str(int(np.floor(i+1))).zfill(4) + self.fmt
             if (not os.path.isfile(fl_name_mmaps)):#in case is not present the a element of the self-supervised task we put the flag=0
-              fl_name_mmaps = mmaps_name + '/' + 'map' + str(int(np.floor(i))).zfill(4) + self.fmt
+              fl_name_mmaps = vid_name + '/' + 'rgb' + str(int(np.floor(i))).zfill(4) + self.fmt
             img = Image.open(fl_name)
             img_maps = Image.open(fl_name_mmaps)
             inpSeq.append(self.spatial_transform(img.convert('RGB')))
