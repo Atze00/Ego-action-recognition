@@ -57,7 +57,6 @@ class makeDataset(Dataset):
         vid_name = self.images[idx]
         mmaps_name= self.mmaps[idx]
         label = self.labels[idx]
-        flag=1
         numFrame = self.numFrames[idx]
         inpSeq = []
         mmapsSeq=[]
@@ -71,7 +70,6 @@ class makeDataset(Dataset):
             fl_name_mmaps = mmaps_name + '/' + 'map' + str(int(np.floor(i))).zfill(4) + self.fmt
             if (not os.path.isfile(fl_name_mmaps)):#in case is not present the a element of the self-supervised task we put the flag=0
               fl_name_mmaps = mmaps_name + '/' + 'map' + str(int(np.floor(i+1))).zfill(4) + self.fmt
-              flag=0
             img = Image.open(fl_name)
             img_maps = Image.open(fl_name_mmaps)
             
@@ -80,5 +78,5 @@ class makeDataset(Dataset):
         inpSeq = torch.stack(inpSeq, 0)
         mmapsSeq=torch.stack(mmapsSeq, 0)
 
-        return inpSeq, label,mmapsSeq,flag
+        return inpSeq, label,mmapsSeq
 
