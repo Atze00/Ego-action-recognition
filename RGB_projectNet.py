@@ -173,7 +173,7 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
             model.resNet.layer4[2].conv2.train(True)
             model.sup_head.train()
             model.resNet.fc.train(True)
-        for i, (inputs, targets,maps,_) in enumerate(train_loader):
+        for i, (inputs, targets,maps) in enumerate(train_loader):
             train_iter += 1
             iterPerEpoch += 1
             optimizer_fn.zero_grad()
@@ -216,7 +216,7 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
                 val_iter = 0
                 val_samples = 0
                 numCorr = 0
-                for j, (inputs, targets,_,_) in enumerate(val_loader):
+                for j, (inputs, targets,_) in enumerate(val_loader):
                     val_iter += 1
                     val_samples += inputs.size(0)
                     with torch.no_grad():
