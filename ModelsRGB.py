@@ -169,7 +169,7 @@ class MyNet(nn.Module):
     
 class MyNetIDT(nn.Module):
     def __init__(self, supervision, num_classes=61, mem_size=512, loss_supervision="classification"):
-        super(ConvLSTMAttention, self).__init__()
+        super(MyNetIDT, self).__init__()
         self.supervision = supervision
         self.num_classes = num_classes
         self.resNet = resnetMod.resnet34(True, True)
