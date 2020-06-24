@@ -6,7 +6,7 @@ from torchvision.transforms import Resize
 from torchvision.transforms import ToTensor as TT
 from torchvision.transforms import Compose as Cp
 from tensorboardX import SummaryWriter
-from makeDatasetRGB_supervision import *
+from makeDatasetRGB import *
 import argparse
 import sys
 
@@ -51,14 +51,14 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
                                  TT()])
     spatial_transform_map_2 = Cp([ Resize((7,7)),
                                  TT()])
-    vid_seq_train = makeDataset(train_data_dir,train=True,
+    vid_seq_train = makeDataset_supervision(train_data_dir,train=True,
                                 spatial_transform=spatial_transform, spatial_transform_map=spatial_transform_map,seqLen=seqLen, fmt='.png')
 
     train_loader = torch.utils.data.DataLoader(vid_seq_train, batch_size=trainBatchSize,
                             shuffle=True, num_workers=8, pin_memory=True)
     if val_data_dir is not None:
 
-        vid_seq_val = makeDataset(val_data_dir,train=False,spatial_transform_map=spatial_transform_map_2,
+        vid_seq_val = makeDataset_supervision(val_data_dir,train=False,spatial_transform_map=spatial_transform_map_2,
                                    spatial_transform=Compose([Scale(256), CenterCrop(224), ToTensor(), normalize]),
                                    seqLen=seqLen, fmt='.png')
 
