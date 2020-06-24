@@ -3,7 +3,7 @@ from ModelsRGB import *
 from spatial_transforms import (Compose, ToTensor, CenterCrop, Scale, Normalize, MultiScaleCornerCrop,
                                 RandomHorizontalFlip,UnNormalize)
 from tensorboardX import SummaryWriter
-from makeDatasetRGB_flowsupervision import *
+from makeDatasetRGB import *
 from torchvision.utils import save_image
 import argparse
 import sys
@@ -39,14 +39,14 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
     unnormalize = UnNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     spatial_transform = Compose([Scale(256), RandomHorizontalFlip(), MultiScaleCornerCrop([1, 0.875, 0.75, 0.65625], 224),
                                  ToTensor(), normalize])
-    vid_seq_train = MakeDataset(train_data_dir, train=True,
+    vid_seq_train = MakeDataset_flowsupervision(train_data_dir, train=True,
                                 spatial_transform=spatial_transform, 
                                 seq_len=seq_len, fmt='.png')
 
     train_loader = torch.utils.data.DataLoader(vid_seq_train, batch_size=train_batch_size,
                                                shuffle=True, num_workers=2, pin_memory=True)
     if val_data_dir is not None:
-        vid_seq_val = MakeDataset(val_data_dir, train=False,
+        vid_seq_val = MakeDataset_flowsupervision(val_data_dir, train=False,
                                   spatial_transform=Compose([Scale(256), CenterCrop(224), ToTensor(), normalize]),
                                   seq_len=seq_len, fmt='.png')
 
