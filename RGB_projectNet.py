@@ -24,6 +24,8 @@ def main_run( stage, model, supervision, train_data_dir, val_data_dir, stage1_di
       model=ConvLSTM(num_classes=num_classes, mem_size=memSize,supervision=supervision,loss_supervision=lossSupervision)
     elif model=='SupervisedLSTMMod':
       model=SupervisedLSTMMod(num_classes=num_classes, mem_size=memSize,supervision=supervision,loss_supervision=lossSupervision)
+    elif model == 'MyNetIDT':
+      model = MyNetIDT(num_classes=num_classes, mem_size=memSize,supervision=supervision,loss_supervision=lossSupervision)
     else:
       print('Model not found')
       sys.exit()
