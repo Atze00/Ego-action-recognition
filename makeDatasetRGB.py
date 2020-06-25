@@ -91,7 +91,7 @@ def gen_split_supervision(root_dir):
 class MakeDataset_flowsupervision(Dataset):
     def __init__(self, root_dir, spatial_transform=None ,seq_len=20,
                  train=True, mulSeg=False, numSeg=1, fmt='.png'):
-        self.images, self.labels, self.numFrames,self.mmaps = gen_split_flowsupervision(root_dir)
+        self.images, self.labels, self.numFrames,self.mmaps = gen_split_supervision(root_dir)
         self.spatial_transform = spatial_transform
         self.train = train
         self.mulSeg = mulSeg
