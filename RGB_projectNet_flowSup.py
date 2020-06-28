@@ -16,7 +16,7 @@ def main_run(stage, model, supervision, train_data_dir, val_data_dir, stage1dict
     num_classes = 61
     if model == 'MyNet':
         model = MyNet(num_classes=num_classes, mem_size=mem_size)
-    if model == 'ConvLSTMDynamic':
+    elif model == 'ConvLSTMDynamic':
         model = ConvLSTMDynamic(num_classes=num_classes, mem_size=mem_size)
     else:
         print('Model not found')
