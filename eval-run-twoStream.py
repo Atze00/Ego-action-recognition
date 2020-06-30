@@ -72,7 +72,7 @@ def main_run(dataset, flowModel_state_dict, RGBModel_state_dict, dataset_dir, st
         numCorrTwoStream += (predictedTwoStream == targets[0]).sum()
         true_labels.append(targets)
         predicted_labels.append(predictedTwoStream)
-    test_accuracyTwoStream = (numCorrTwoStream / test_samples) * 100
+    test_accuracyTwoStream = (numCorrTwoStream / float(test_samples)) * 100
     print('Test Accuracy = {}'.format(test_accuracyTwoStream))
 
     cnf_matrix = confusion_matrix(true_labels, predicted_labels).astype(float)
