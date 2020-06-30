@@ -58,7 +58,7 @@ def main_run(dataset, model_state_dict, dataset_dir, stackSize, seqLen, memSize)
         numCorrTwoStream += (predictedTwoStream == targets.cuda()).sum()
         predicted_labels.append(predictedTwoStream)
         true_labels.append(targets)
-    test_accuracyTwoStream = (numCorrTwoStream / test_samples) * 100
+    test_accuracyTwoStream = (numCorrTwoStream / float(test_samples)) * 100
 
     cnf_matrix = confusion_matrix(true_labels, predicted_labels).astype(float)
     cnf_matrix_normalized = cnf_matrix / cnf_matrix.sum(axis=1)[:, np.newaxis]
