@@ -55,7 +55,7 @@ def main_run(dataset, model_state_dict, dataset_dir, stackSize, numSeg):
         numCorr += (predicted == targets[0]).sum()
         true_labels.append(targets)
         predicted_labels.append(predicted)
-    test_accuracy = (numCorr / test_samples) * 100
+    test_accuracy = (numCorr / float(test_samples)) * 100
     print('Test Accuracy  = {}%'.format(test_accuracy))
 
     cnf_matrix = confusion_matrix(true_labels, predicted_labels).astype(float)
