@@ -59,11 +59,11 @@ def main_run(dataset, model_state_dict, dataset_dir, stackSize, seqLen, memSize)
         predicted_labels.append(predictedTwoStream)
         true_labels.append(targets)
     test_accuracyTwoStream = (numCorrTwoStream / float(test_samples)) * 100
-
+    print('Accuracy {:.02f}%'.format(test_accuracyTwoStream))
     cnf_matrix = confusion_matrix(true_labels, predicted_labels).astype(float)
     cnf_matrix_normalized = cnf_matrix / cnf_matrix.sum(axis=1)[:, np.newaxis]
 
-    print('Accuracy {:.02f}%'.format(test_accuracyTwoStream))
+    
 
     ticks=np.linspace(0, 60, num=61)
     plt.imshow(cnf_matrix_normalized, interpolation='none', cmap='binary')
