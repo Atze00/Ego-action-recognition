@@ -1,6 +1,6 @@
 # Self-Supervision with Dynamic Filters for Egocentric Action Recognition
 
-This git contains the source code for a university project: pdf avaiable in [here](https://docdro.id/O8Jjfbt)
+This git contains the source code for a university project: pdf avaiable in [here](https://docdro.id/O8Jjfbt)<br>
 All the testing on the project has been done using main.ipynb.
 
 
